@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Control de Pagos</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --success: #10b981;
+            --success-bg: #d1fae5;
+            --danger: #ef4444;
+            --danger-bg: #fee2e2;
+            --warning: #f59e0b;
+            --warning-bg: #fef3c7;
+            --dark: #1f2937;
+            --gray-light: #f3f4f6;
+            --border: #e5e7eb;
+            --font: 'Inter', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font);
+            background-color: #f8fafc;
+            color: var(--dark);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 12px;
+            overflow: hidden;
+        }
+
+        /* --- HEADER & TABS --- */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: white; padding: 12px 20px; border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); flex-shrink: 0;
+        }
+        
+        .header-left { display: flex; align-items: center; gap: 24px; }
+        h1 { font-size: 18px; color: var(--primary); display: flex; align-items: center; gap: 8px; margin: 0; }
+        
+        .tabs { display: flex; gap: 4px; background: var(--gray-light); padding: 4px; border-radius: 8px; }
+        .tab-btn { 
+            padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; 
+            font-size: 13px; border: none; background: transparent; color: #6b7280; transition: all 0.2s;
+        }
+        .tab-btn.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tab-btn:hover:not(.active) { color: var(--dark); }
+
+        .header-right { display: flex; align-items: center; gap: 16px; }
+        .global-search { display: flex; align-items: center; position: relative; }
+        .global-search .material-icons-round { position: absolute; left: 8px; color: #9ca3af; font-size: 18px; }
+        .global-search input { padding-left: 32px; width: 280px; }
+        .date-control { display: flex; align-items: center; gap: 8px; font-weight: 500; color: #6b7280; font-size: 13px;}
+        .date-control input { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--font); outline: none; }
+
+        .btn {
+            background: var(--primary); color: white; border: none; padding: 8px 14px;
+            border-radius: 6px; cursor: pointer; font-weight: 600; display: flex;
+            align-items: center; justify-content: center; gap: 6px; font-size: 13px; transition: background 0.2s;
+        }
+        .btn:hover { background: #1d4ed8; }
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #059669; }
+        .btn-warning { background: var(--warning); color: var(--dark); }
+        .btn-warning:hover { background: #d97706; color: white; }
+
+        /* --- TABS CONTENT CONTAINERS --- */
+        .tab-content {
+            display: none; flex: 1; overflow: hidden; flex-direction: column; gap: 12px;
+        }
+        .tab-content.active { display: flex; }
+
+        /* --- TOP PANEL (Bancos + Filtros) --- */
+        .top-panel { display: flex; gap: 12px; flex-shrink: 0; }
+        .panel-box {
+            background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            padding: 12px; border: 1px solid var(--border);
+        }
+        .bancos-wrapper { flex: 2; overflow-x: auto; }
+
+        .section-title { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 8px;}
+
+        /* Tabla de Bancos Compacta (Main View) */
+        .bancos-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .bancos-table th, .bancos-table td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); }
+        .bancos-table th { background: var(--gray-light); color: #4b5563; font-weight: 600; }
+        .bancos-table th:first-child, .bancos-table td:first-child { text-align: left; }
+        .bancos-table td:first-child { font-weight: 600; color: var(--primary); }
+        .bancos-table tr:hover { background: #f8fafc; }
+
+        /* --- SUMMARY BANNER --- */
+        #summary-banner {
+            display: none; /* Oculto por defecto */
+            background: var(--warning-bg); border: 1px solid var(--warning);
+            padding: 12px 20px; border-radius: 8px; align-items: center; justify-content: space-between;
+            flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* --- TABLAS PRINCIPALES CON SCROLL Y RESIZER --- */
+        .table-container {
+            background: white; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            flex: 1; overflow: auto; border: 1px solid var(--border);
+        }
+
+        table.main-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; table-layout: auto;}
+        table.main-table th { 
+            background: var(--gray-light); color: #4b5563; font-weight: 700; 
+            padding: 10px 12px; border-bottom: 2px solid var(--border); 
+            position: sticky; top: 0; z-index: 10; white-space: nowrap; user-select: none;
+        }
+        table.main-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        table.main-table tr:hover { background-color: #f1f5f9; }
+
+        /* Estilos Resizer de Columnas (Excel style) */
+        .resizer {
+            position: absolute; top: 0; right: 0; width: 6px; height: 100%;
+            cursor: col-resize; user-select: none; z-index: 11;
+        }
+        .resizer:hover, .resizing { background-color: var(--primary-light); opacity: 0.5; }
+
+        /* Proveedor Link */
+        .proveedor-link { color: var(--primary-light); font-weight: 600; cursor: pointer; text-decoration: underline; }
+        .proveedor-link:hover { color: var(--primary); }
+
+        /* Badge clickable */
+        .badge { 
+            padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; 
+            text-transform: uppercase; cursor: pointer; transition: opacity 0.2s;
+            display: inline-block; text-align: center; width: 85px; user-select: none;
+        }
+        .badge:hover { opacity: 0.8; }
+        .badge.pagado { background: var(--success-bg); color: var(--success); }
+        .badge.pendiente { background: var(--warning-bg); color: var(--warning); }
+        .badge.vencido { background: var(--danger-bg); color: var(--danger); }
+
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .value.positive { color: var(--success); }
+        .value.negative { color: var(--danger); }
+        .week-sum { font-weight: 700; color: #4338ca; background: #e0e7ff; padding: 2px 6px; border-radius: 4px; }
+
+        /* Badges para saldos */
+        .saldo-badge {
+            display: inline-block; padding: 4px 10px; border-radius: 6px; font-weight: 700;
+            color: white; min-width: 90px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .saldo-badge.negative { background-color: #dc2626; } /* Rojo fuerte */
+        .saldo-badge.positive { background-color: #059669; } /* Verde fuerte */
+        .saldo-badge.neutral { background-color: #9ca3af; } /* Gris para cero exacto */
+
+        /* Acciones */
+        .actions-cell { display: flex; gap: 4px; justify-content: center;}
+        .btn-icon { background: none; border: none; cursor: pointer; color: #9ca3af; border-radius: 4px; padding: 4px; display: flex; align-items: center;}
+        .btn-icon:hover { color: var(--primary); background: var(--gray-light); }
+        .btn-icon.delete:hover { color: var(--danger); background: var(--danger-bg); }
+
+        /* --- MODALES --- */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); justify-content: center; align-items: center;
+            z-index: 1000; padding: 16px;
+        }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 650px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; display: flex; flex-direction: column;}
+        .modal-content.small { max-width: 400px; height: auto;}
+        
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-shrink: 0;}
+        .modal-body { overflow-y: auto; flex: 1; padding-right: 4px;}
+        .close-modal { cursor: pointer; color: #9ca3af; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .form-grid.single-col { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group.full-width { grid-column: span 2; }
+        .form-group label { font-size: 12px; font-weight: 600; color: #4b5563; }
+        .form-group input, .form-group select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-family: var(--font); font-size: 13px; }
+
+        /* Resumen Proveedor */
+        .prov-stats { display: flex; gap: 12px; margin-bottom: 16px; }
+        .prov-stat-box { flex: 1; background: var(--gray-light); padding: 12px; border-radius: 8px; text-align: center;}
+        .prov-stat-box span { display: block; font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase;}
+        .prov-stat-box strong { font-size: 18px; color: var(--primary); }
+
+        /* Punto de Color para Bancos */
+        .bank-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* --- ESTILOS DE IMPRESIÓN --- */
+        @media print {
+            body { height: auto; overflow: visible; background: white; padding: 0; }
+            header, .top-panel, .tabs, #btn-global-action, #btn-resumen-top, .actions-cell { display: none !important; }
+            #summary-banner { display: flex !important; border: none; background: white; padding: 0 0 10px 0; margin-bottom: 10px; border-bottom: 2px solid #000; box-shadow: none; }
+            .no-print { display: none !important; }
+            .table-container { box-shadow: none; border: none; overflow: visible; }
+            table.main-table { width: 100%; border: 1px solid #ddd; }
+            table.main-table th { position: static; background: #f3f4f6 !important; -webkit-print-color-adjust: exact; color: black; border: 1px solid #ddd; }
+            table.main-table td { border: 1px solid #ddd; }
+            /* Evitar romper filas a la mitad */
+            tr { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-left">
+            <h1><span class="material-icons-round">account_balance_wallet</span> Control Finanzas</h1>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('pagos')" id="btn-tab-pagos">Pagos y Cheques</button>
+                <button class="tab-btn" onclick="switchTab('bancos')" id="btn-tab-bancos">Gestión de Bancos</button>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="global-search">
+                <span class="material-icons-round">search</span>
+                <input type="text" id="search-nombre" class="search-input" placeholder="Buscar Nombre, Banco, Nro, Estado...">
+            </div>
+            <div class="date-control">
+                <label for="fecha-actual">Ref. Días:</label>
+                <input type="date" id="fecha-actual">
+            </div>
+            
+            <!-- Botón Generar Resumen -->
+            <button class="btn btn-warning" id="btn-resumen-top" onclick="openResumenModal()">
+                <span class="material-icons-round">date_range</span> RESUMEN
+            </button>
+
+            <!-- Botón global que cambia su función según la pestaña -->
+            <button class="btn btn-success" id="btn-global-action" onclick="handleGlobalAction()">
+                <span class="material-icons-round">add</span> NUEVO REGISTRO
+            </button>
+        </div>
+    </header>
+
+    <!-- ================= PESTAÑA: PAGOS Y CHEQUES ================= -->
+    <div id="tab-pagos" class="tab-content active">
+        <div class="top-panel">
+            <!-- Tabla Resumen de Bancos -->
+            <div class="panel-box bancos-wrapper" style="flex: 1;">
+                <div class="section-title">Resumen de Bancos</div>
+                <table class="bancos-table">
+                    <thead>
+                        <tr>
+                            <th>Banco / Cuenta</th>
+                            <th class="text-right">Saldo Inicial</th>
+                            <th class="text-right">Descubierto</th>
+                            <th class="text-right">Disponible Actual</th>
+                            <th class="text-right">A Pagar (Acumulado)</th>
+                            <th class="text-center">Días Vto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bancos-summary-tbody">
+                        <!-- Dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Banner de Resumen Activo (Se muestra solo si hay un resumen generado) -->
+        <div id="summary-banner">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="material-icons-round" style="color: var(--warning);">event_available</span>
+                <strong style="color: var(--warning); font-size: 15px;">Resumen de Pendientes Activo:</strong>
+                <span id="summary-dates" style="font-weight: 600; color: var(--dark);">Desde 01/01/2026 hasta 10/01/2026</span>
+            </div>
+            <div style="display: flex; gap: 16px; align-items: center;">
+                <div style="font-size: 18px; font-weight: 700; color: var(--danger);">TOTAL A PAGAR: <span id="summary-total">$ 0.00</span></div>
+                <button class="btn no-print" style="background: white; color: var(--dark); border: 1px solid var(--border);" onclick="window.print()" title="Imprimir Tabla">
+                    <span class="material-icons-round">print</span> Imprimir
+                </button>
+                <button class="btn no-print" style="background: var(--dark); color: white;" onclick="clearResumen()">
+                    <span class="material-icons-round">close</span> Limpiar Filtro
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabla Principal de Cheques -->
+        <div class="table-container">
+            <table class="main-table" id="cheques-table">
+                <thead>
+                    <tr>
+                        <th>FECHA PAGO</th>
+                        <th>N° CHEQUE</th>
+                        <th>NOMBRE</th>
+                        <th>CATEGORÍA</th>
+                        <th class="text-right">IMPORTE</th>
+                        <th>BANCO</th>
+                        <th>TIPO</th>
+                        <th class="text-center">ESTADO</th>
+                        <th class="text-right">TOTAL DEBE</th>
+                        <th>VTO</th>
+                        <th class="text-center">DÍAS</th>
+                        <th>SEMANA</th>
+                        <th class="text-right">ACUM. SEMANAL</th>
+                        <th class="text-center actions-cell">ACCIONES</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-cheques-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ================= PESTAÑA: GESTIÓN DE BANCOS ================= -->
+    <div id="tab-bancos" class="tab-content">
+        <div class="table-container">
+            <table class="main-table" id="bancos-main-table">
+                <thead>
+                    <tr>
+                        <th>BANCO / CUENTA</th>
+                        <th class="text-right">SALDO INICIAL</th>
+                        <th class="text-right">LIMITE DESCUBIERTO</th>
+                        <th>VTO ACUERDO</th>
+                        <th class="text-center">DÍAS VTO ACUERDO</th>
+                        <th class="text-right">DISPONIBLE ACTUAL</th>
+                        <th class="text-right">A PAGAR ACUMULADO</th>
+                        <th class="text-center actions-cell">ACCIONES</th>
+                    </tr>
+                </thead>
+                <tbody id="bancos-full-tbody">
+                    <!-- Dinámico -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ================= MODALES ================= -->
+
+    <!-- Modal Rango de Fechas (Resumen) -->
+    <div class="modal" id="resumen-modal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h2 style="font-size: 16px; color: var(--primary);">Generar Resumen por Fechas</h2>
+                <span class="material-icons-round close-modal" onclick="closeModal('resumen-modal')">close</span>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: #6b7280; margin-bottom: 16px;">Selecciona el rango para calcular y filtrar todos los compromisos <strong style="color:var(--danger)">PENDIENTES</strong> de pago.</p>
+                <form id="resumen-form" onsubmit="generateResumen(event)">
+                    <div class="form-grid single-col">
+                        <div class="form-group">
+                            <label>Fecha Desde</label>
+                            <input type="date" id="resumen-desde" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Hasta</label>
+                            <input type="date" id="resumen-hasta" required>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top:16px;">
+                        <button type="button" class="btn" style="background:#9ca3af;" onclick="closeModal('resumen-modal')">Cancelar</button>
+                        <button type="submit" class="btn btn-warning">Filtrar y Calcular</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cheques -->
+    <div class="modal" id="cheque-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title" style="font-size: 16px; color: var(--primary);">Agregar Pago/Cheque</h2>
+                <span class="material-icons-round close-modal" onclick="closeModal('cheque-modal')">close</span>
+            </div>
+            <div class="modal-body">
+                <form id="cheque-form" onsubmit="saveCheque(event)">
+                    <input type="hidden" id="cheque-id">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Fecha de Pago</label>
+                            <input type="date" id="form-fecha" required>
+                        </div>
+                        <div class="form-group">
+                            <label>N° de Cheque / Ref</label>
+                            <input type="text" id="form-nro">
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre</label>
+                            <input type="text" id="form-nombre" required placeholder="Ej: DROGUERIA" list="proveedores-list" autocomplete="off">
+                            <datalist id="proveedores-list"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label>Categoría</label>
+                            <input type="text" id="form-categoria" required placeholder="Ej: Mercadería, Flete..." list="categorias-list" autocomplete="off">
+                            <datalist id="categorias-list"></datalist>
+                        </div>
+                        <div class="form-group">
+                            <label>Importe ($)</label>
+                            <input type="number" id="form-importe" step="0.01" required placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Banco de Origen</label>
+                            <select id="form-banco" required>
+                                <!-- Se llena dinámicamente desde bancosData -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <select id="form-tipo">
+                                <option value="E-cheq">E-cheq</option>
+                                <option value="Fisico">Físico</option>
+                                <option value="Transferencia">Transferencia</option>
+                                <option value="DEUDA">DEUDA</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Estado Inicial</label>
+                            <select id="form-estado">
+                                <option value="">PENDIENTE</option>
+                                <option value="PAGADO">PAGADO</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+                        <button type="button" class="btn" style="background:#9ca3af;" onclick="closeModal('cheque-modal')">Cancelar</button>
+                        <button type="submit" class="btn">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Bancos -->
+    <div class="modal" id="banco-modal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h2 id="modal-banco-title" style="font-size: 16px; color: var(--primary);">Alta / Edición de Banco</h2>
+                <span class="material-icons-round close-modal" onclick="closeModal('banco-modal')">close</span>
+            </div>
+            <div class="modal-body">
+                <form id="banco-form" onsubmit="saveBanco(event)">
+                    <input type="hidden" id="banco-key">
+                    <div class="form-grid single-col">
+                        <div class="form-group">
+                            <label>Nombre del Banco / Cuenta</label>
+                            <input type="text" id="form-banco-nombre" required placeholder="Ej: BANCO NACION - CC">
+                        </div>
+                        <div class="form-group">
+                            <label>Color Identificador</label>
+                            <input type="color" id="form-banco-color" style="padding: 2px; height: 38px; cursor: pointer;" value="#1e3a8a">
+                        </div>
+                        <div class="form-group">
+                            <label>Saldo Inicial Actual ($)</label>
+                            <input type="number" id="form-banco-saldo" step="0.01" required value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Límite Descubierto Aprobado ($)</label>
+                            <input type="number" id="form-banco-descubierto" step="0.01" required value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Vencimiento de Acuerdo (Descubierto)</label>
+                            <input type="date" id="form-banco-vto">
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top:16px;">
+                        <button type="button" class="btn" style="background:#9ca3af;" onclick="closeModal('banco-modal')">Cancelar</button>
+                        <button type="submit" class="btn">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial Proveedor -->
+    <div class="modal" id="proveedor-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-prov-title" style="font-size: 16px; color: var(--primary);">Historial: Proveedor</h2>
+                <span class="material-icons-round close-modal" onclick="closeModal('proveedor-modal')">close</span>
+            </div>
+            <div class="modal-body">
+                <div class="prov-stats">
+                    <div class="prov-stat-box">
+                        <span>Total Histórico</span>
+                        <strong id="prov-total">0.00</strong>
+                    </div>
+                    <div class="prov-stat-box">
+                        <span>Pagado</span>
+                        <strong id="prov-pagado" style="color:var(--success)">0.00</strong>
+                    </div>
+                    <div class="prov-stat-box">
+                        <span>Deuda Pendiente</span>
+                        <strong id="prov-deuda" style="color:var(--danger)">0.00</strong>
+                    </div>
+                </div>
+                <table class="main-table" style="font-size:11px;">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Nro</th>
+                            <th>Categoría</th>
+                            <th>Banco</th>
+                            <th>Estado</th>
+                            <th class="text-right">Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prov-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONTROL DE PESTAÑAS (TABS) ---
+        let currentTab = 'pagos';
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            document.getElementById(`btn-tab-${tabId}`).classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            const btnGlobal = document.getElementById('btn-global-action');
+            if(tabId === 'pagos') {
+                btnGlobal.innerHTML = '<span class="material-icons-round">add</span> NUEVO PAGO';
+            } else {
+                btnGlobal.innerHTML = '<span class="material-icons-round">account_balance</span> NUEVO BANCO';
+            }
+        }
+
+        function handleGlobalAction() {
+            if(currentTab === 'pagos') openChequeModal();
+            else openBancoModal(); 
+        }
+
+        // --- DATOS Y LOCALSTORAGE ---
+        let bancosData = {
+            "BCO-1": { nombre: "BANCO NACION - CA", saldo: 0, descubierto: 0, vtoAcuerdo: "", color: "#4b6cb7" },
+            "BCO-2": { nombre: "BANCO NACION - CC", saldo: -19977500, descubierto: 20000000, vtoAcuerdo: "2026-12-31", color: "#4b6cb7" },
+            "BCO-3": { nombre: "BCO SANTANDER CC", saldo: -22544000, descubierto: 22700000, vtoAcuerdo: "2026-10-15", color: "#ec1c24" },
+            "BCO-4": { nombre: "BCO SANTANDER C/A", saldo: -10769.9, descubierto: 0, vtoAcuerdo: "", color: "#ec1c24" },
+            "BCO-5": { nombre: "BANCO MACRO CA", saldo: 0, descubierto: 0, vtoAcuerdo: "", color: "#005493" },
+            "BCO-6": { nombre: "BANCO MACRO CC", saldo: -6093950, descubierto: 5950000, vtoAcuerdo: "2026-08-30", color: "#005493" },
+            "BCO-EF": { nombre: "CAJA EFECTIVO", saldo: 500000, descubierto: 0, vtoAcuerdo: "", color: "#10b981" }
+        };
+
+        let cheques = [
+            { id: 1, fecha: "2026-06-20", nro: "8258", nombre: "DROGUERIA DEL SUD", categoria: "MERCADERIA", importe: 1000000, banco: "BCO-6", tipo: "Fisico", estado: "PENDIENTE" },
+            { id: 2, fecha: "2026-06-24", nro: "1234", nombre: "DROGUERIA DEL SUD", categoria: "MERCADERIA", importe: 500000, banco: "BCO-3", tipo: "E-cheq", estado: "PAGADO" },
+            { id: 3, fecha: "2026-06-25", nro: "9981", nombre: "CREDITO", categoria: "PRESTAMO", importe: 1327010, banco: "BCO-3", tipo: "E-cheq", estado: "PENDIENTE" },
+            { id: 4, fecha: "2026-07-04", nro: "16", nombre: "RPB SA", categoria: "MERCADERIA", importe: 4490500, banco: "BCO-2", tipo: "E-cheq", estado: "PENDIENTE" }
+        ];
+
+        // Estado del Resumen
+        let summaryState = { active: false, start: '', end: '' };
+
+        function loadData() {
+            const lb = localStorage.getItem('bancosData_v3');
+            const lc = localStorage.getItem('cheques_v3');
+            if (lb) bancosData = JSON.parse(lb);
+            if (lc) cheques = JSON.parse(lc);
+        }
+
+        function persistData() {
+            localStorage.setItem('bancosData_v3', JSON.stringify(bancosData));
+            localStorage.setItem('cheques_v3', JSON.stringify(cheques));
+        }
+
+        // --- ACTUALIZAR SELECTS Y DATALISTS DINÁMICOS ---
+        function updateDynamicUI() {
+            const provSet = new Set();
+            const catSet = new Set();
+            cheques.forEach(c => {
+                if (c.nombre) provSet.add(c.nombre);
+                if (c.categoria) catSet.add(c.categoria);
+            });
+            document.getElementById('proveedores-list').innerHTML = Array.from(provSet).sort().map(p => `<option value="${p}">`).join('');
+            document.getElementById('categorias-list').innerHTML = Array.from(catSet).sort().map(c => `<option value="${c}">`).join('');
+
+            const bSelect = document.getElementById('form-banco');
+            const currBSel = bSelect.value;
+            let opts = '';
+            Object.keys(bancosData).forEach(k => { opts += `<option value="${k}">${bancosData[k].nombre}</option>`; });
+            bSelect.innerHTML = opts;
+            if(bancosData[currBSel]) bSelect.value = currBSel;
+        }
+
+        // --- INICIALIZACIÓN ---
+        document.addEventListener("DOMContentLoaded", () => {
+            loadData();
+            switchTab('pagos'); 
+            
+            // Setear la fecha actual por defecto en el control de referencias
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('fecha-actual').value = `${yyyy}-${mm}-${dd}`;
+
+            document.getElementById('search-nombre').addEventListener('input', renderAll);
+            document.getElementById('fecha-actual').addEventListener('change', renderAll);
+            
+            updateDynamicUI();
+            renderAll();
+            initResizers(); 
+        });
+
+        // --- LÓGICA DE RESIZE DE COLUMNAS (ESTILO EXCEL) ---
+        function initResizers() {
+            const tables = document.querySelectorAll('table.main-table');
+            tables.forEach(table => {
+                const cols = table.querySelectorAll('th');
+                [].forEach.call(cols, function (col) {
+                    if(col.querySelector('.resizer')) return; 
+                    const resizer = document.createElement('div');
+                    resizer.classList.add('resizer');
+                    col.appendChild(resizer);
+                    createResizableColumn(col, resizer);
+                });
+            });
+        }
+
+        function createResizableColumn(col, resizer) {
+            let x = 0; let w = 0;
+            const mouseDownHandler = function(e) {
+                x = e.clientX;
+                const styles = window.getComputedStyle(col);
+                w = parseInt(styles.width, 10);
+                resizer.classList.add('resizing');
+                document.addEventListener('mousemove', mouseMoveHandler);
+                document.addEventListener('mouseup', mouseUpHandler);
+            };
+            const mouseMoveHandler = function(e) {
+                const dx = e.clientX - x;
+                col.style.width = `${w + dx}px`;
+                col.style.minWidth = `${w + dx}px`; 
+            };
+            const mouseUpHandler = function() {
+                resizer.classList.remove('resizing');
+                document.removeEventListener('mousemove', mouseMoveHandler);
+                document.removeEventListener('mouseup', mouseUpHandler);
+            };
+            resizer.addEventListener('mousedown', mouseDownHandler);
+        }
+
+        // --- UTILIDADES ---
+        const formatCur = (val) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
+        
+        function getSaturday(dateStr) {
+            if(!dateStr) return null;
+            let d = new Date(dateStr + "T00:00:00");
+            let day = d.getDay(); 
+            let diff = day === 6 ? 0 : day + 1; 
+            d.setDate(d.getDate() - diff);
+            return d;
+        }
+
+        function calcVto(fechaObj, allowEmptyText = true) {
+            if (!fechaObj) return { vto: allowEmptyText ? "-" : "", dias: allowEmptyText ? "-" : "" };
+            const ref = new Date(document.getElementById('fecha-actual').value + "T00:00:00");
+            const pay = new Date(fechaObj + "T00:00:00");
+            const diffDays = Math.ceil((pay - ref) / (1000 * 60 * 60 * 24));
+            return { vto: diffDays < 0 ? "VENCIDO" : "FALTAN", dias: diffDays };
+        }
+
+        function formatDateArg(dateStr) {
+            if(!dateStr) return '';
+            const [y, m, d] = dateStr.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
+        // --- LÓGICA DEL RESUMEN POR FECHAS ---
+        function openResumenModal() {
+            document.getElementById('resumen-form').reset();
+            document.getElementById('resumen-modal').style.display = 'flex';
+        }
+
+        function generateResumen(e) {
+            e.preventDefault();
+            summaryState.start = document.getElementById('resumen-desde').value;
+            summaryState.end = document.getElementById('resumen-hasta').value;
+            
+            if(summaryState.start > summaryState.end) {
+                alert("La fecha de inicio no puede ser mayor a la fecha final.");
+                return;
+            }
+
+            summaryState.active = true;
+            closeModal('resumen-modal');
+            
+            // Forzar limpieza del buscador global al usar el resumen
+            document.getElementById('search-nombre').value = '';
+            
+            renderAll();
+        }
+
+        function clearResumen() {
+            summaryState.active = false;
+            summaryState.start = '';
+            summaryState.end = '';
+            renderAll();
+        }
+
+        // --- RENDERIZADO PRINCIPAL ---
+        function renderAll() {
+            // 1. Limpiar Acumulados Bancos
+            for (let k in bancosData) bancosData[k].aPagarAcum = 0;
+
+            // 2. Pre-calcular Sumatorias Semanales
+            let sumSemana = {}; 
+            let sortedCheques = [...cheques].sort((a,b) => new Date(a.fecha||'2099-01-01') - new Date(b.fecha||'2099-01-01'));
+
+            sortedCheques.forEach(c => {
+                if (c.estado !== "PAGADO" && c.banco && bancosData[c.banco]) {
+                    bancosData[c.banco].aPagarAcum += c.importe;
+                }
+                
+                if (c.fecha && c.estado !== "PAGADO") {
+                    let sat = getSaturday(c.fecha);
+                    let satKey = sat.toISOString().split('T')[0];
+                    if(!sumSemana[satKey]) sumSemana[satKey] = 0;
+                    sumSemana[satKey] += c.importe;
+                }
+            });
+
+            // 3. Renderizar Resumen Bancos (Pestaña Pagos)
+            const tbodyBancosSum = document.getElementById('bancos-summary-tbody');
+            tbodyBancosSum.innerHTML = '';
+            for (let k in bancosData) {
+                let b = bancosData[k];
+                if(b.saldo === 0 && b.descubierto === 0 && b.aPagarAcum === 0) continue; 
+                let disp = b.saldo + b.descubierto;
+                let vtoAcuerdoData = calcVto(b.vtoAcuerdo, false);
+                let saldoCls = b.saldo < 0 ? 'negative' : (b.saldo > 0 ? 'positive' : 'neutral');
+                let dispCls = disp < 0 ? 'negative' : (disp > 0 ? 'positive' : 'neutral');
+                let bColor = b.color || '#9ca3af';
+                
+                tbodyBancosSum.innerHTML += `
+                    <tr>
+                        <td><span class="bank-dot" style="background-color: ${bColor}"></span>${b.nombre}</td>
+                        <td class="text-right"><span class="saldo-badge ${saldoCls}">${formatCur(b.saldo)}</span></td>
+                        <td class="text-right" style="color:#6b7280; font-weight: 600;">${formatCur(b.descubierto)}</td>
+                        <td class="text-right"><span class="saldo-badge ${dispCls}">${formatCur(disp)}</span></td>
+                        <td class="text-right" style="color:var(--danger); font-weight: 600;">${formatCur(b.aPagarAcum)}</td>
+                        <td class="text-center" style="font-weight:600; color:${vtoAcuerdoData.dias < 0 ? 'var(--danger)' : 'var(--warning)'}">${vtoAcuerdoData.dias !== '' ? vtoAcuerdoData.dias : '-'}</td>
+                    </tr>
+                `;
+            }
+
+            // 4. Renderizar Vista Completa Bancos (Pestaña Bancos)
+            const tbodyBancosFull = document.getElementById('bancos-full-tbody');
+            tbodyBancosFull.innerHTML = '';
+            for (let k in bancosData) {
+                let b = bancosData[k];
+                let disp = b.saldo + b.descubierto;
+                let vtoAcuerdoData = calcVto(b.vtoAcuerdo, false);
+                let saldoCls = b.saldo < 0 ? 'negative' : (b.saldo > 0 ? 'positive' : 'neutral');
+                let dispCls = disp < 0 ? 'negative' : (disp > 0 ? 'positive' : 'neutral');
+                let bColor = b.color || '#9ca3af';
+                
+                tbodyBancosFull.innerHTML += `
+                    <tr>
+                        <td><span class="bank-dot" style="background-color: ${bColor}"></span><strong>${b.nombre}</strong></td>
+                        <td class="text-right"><span class="saldo-badge ${saldoCls}">${formatCur(b.saldo)}</span></td>
+                        <td class="text-right" style="color:#6b7280; font-weight: 600;">${formatCur(b.descubierto)}</td>
+                        <td>${b.vtoAcuerdo ? new Date(b.vtoAcuerdo+'T00:00:00').toLocaleDateString('es-AR') : '-'}</td>
+                        <td class="text-center" style="font-weight:600; color:${vtoAcuerdoData.dias < 0 ? 'var(--danger)' : 'var(--warning)'}">${vtoAcuerdoData.dias !== '' ? vtoAcuerdoData.dias : '-'}</td>
+                        <td class="text-right"><span class="saldo-badge ${dispCls}">${formatCur(disp)}</span></td>
+                        <td class="text-right" style="color:var(--danger); font-weight:600;">${formatCur(b.aPagarAcum)}</td>
+                        <td class="text-center actions-cell">
+                            <button class="btn-icon" onclick="openBancoModal('${k}')"><span class="material-icons-round">edit</span></button>
+                            <button class="btn-icon delete" onclick="deleteBanco('${k}')"><span class="material-icons-round">delete</span></button>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            // 5. Renderizar Tabla Cheques / Aplicar Filtros y Resumen
+            const searchTxt = document.getElementById('search-nombre').value.toLowerCase();
+            const tbody = document.getElementById('tabla-cheques-body');
+            const summaryBanner = document.getElementById('summary-banner');
+            tbody.innerHTML = '';
+            
+            let totalResumen = 0;
+
+            sortedCheques.forEach(c => {
+                let nombreBanco = bancosData[c.banco] ? bancosData[c.banco].nombre : '-';
+                
+                // Lógica de filtrado de Resumen de Fechas (Prioritario si está activo)
+                if (summaryState.active) {
+                    if (c.estado === 'PAGADO') return; // Solo pendientes
+                    if (!c.fecha || c.fecha < summaryState.start || c.fecha > summaryState.end) return; // Fuera de rango
+                    totalResumen += c.importe;
+                } else {
+                    // Lógica de buscador normal si NO hay resumen activo
+                    let txtToSearch = `${c.nombre} ${c.categoria} ${c.nro} ${c.estado} ${nombreBanco}`.toLowerCase();
+                    if (searchTxt && !txtToSearch.includes(searchTxt)) return;
+                }
+
+                let { vto, dias } = calcVto(c.fecha);
+                let isPagado = c.estado === 'PAGADO';
+                let totalDebe = isPagado ? 0 : c.importe;
+                let bColor = bancosData[c.banco] ? (bancosData[c.banco].color || '#9ca3af') : '#9ca3af';
+                
+                let semText = "-", semAcum = "-";
+                if(c.fecha) {
+                    let sat = getSaturday(c.fecha);
+                    semText = `Sáb ${String(sat.getDate()).padStart(2, '0')}/${String(sat.getMonth() + 1).padStart(2, '0')}`;
+                    let satKey = sat.toISOString().split('T')[0];
+                    semAcum = sumSemana[satKey] ? formatCur(sumSemana[satKey]) : formatCur(0);
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${c.fecha ? new Date(c.fecha+'T00:00:00').toLocaleDateString('es-AR') : '-'}</td>
+                        <td>${c.nro || '-'}</td>
+                        <td><span class="proveedor-link" onclick="openProvModal('${c.nombre.replace(/'/g, "\\'")}')">${c.nombre}</span></td>
+                        <td><span style="font-size: 11px; background: var(--gray-light); padding: 2px 6px; border-radius: 4px; font-weight: 600; color: #4b5563;">${c.categoria || '-'}</span></td>
+                        <td class="text-right font-weight:600;">${formatCur(c.importe)}</td>
+                        <td><span class="bank-dot" style="background-color: ${bColor}"></span><span title="${nombreBanco}" style="max-width: 150px; display:inline-block; overflow:hidden; text-overflow:ellipsis; vertical-align: middle;">${nombreBanco}</span></td>
+                        <td>${c.tipo || '-'}</td>
+                        <td class="text-center" title="Click para cambiar estado">
+                            <span onclick="toggleEstado(${c.id})" class="badge ${isPagado ? 'pagado' : (vto==='VENCIDO'?'vencido':'pendiente')}">
+                                ${isPagado ? 'PAGADO' : 'PENDIENTE'}
+                            </span>
+                        </td>
+                        <td class="text-right" style="font-weight: 600; color: ${totalDebe > 0 ? 'var(--danger)' : 'inherit'}">${formatCur(totalDebe)}</td>
+                        <td>${vto || '-'}</td>
+                        <td class="text-center" style="font-weight: 600; color: ${dias < 0 ? 'var(--danger)' : 'var(--success)'}">${dias}</td>
+                        <td style="color:#6b7280; font-size:11px;">${semText}</td>
+                        <td class="text-right"><span class="week-sum">${semAcum}</span></td>
+                        <td class="text-center actions-cell">
+                            <button class="btn-icon" onclick="editCheque(${c.id})"><span class="material-icons-round" style="font-size:18px;">edit</span></button>
+                            <button class="btn-icon delete" onclick="deleteCheque(${c.id})"><span class="material-icons-round" style="font-size:18px;">delete</span></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // Actualizar interfaz del Banner si corresponde
+            if (summaryState.active) {
+                document.getElementById('summary-dates').innerText = `Desde ${formatDateArg(summaryState.start)} hasta ${formatDateArg(summaryState.end)}`;
+                document.getElementById('summary-total').innerText = formatCur(totalResumen);
+                summaryBanner.style.display = 'flex';
+            } else {
+                summaryBanner.style.display = 'none';
+            }
+        }
+
+        // --- ACCIONES INTERACTIVAS ---
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        
+        function toggleEstado(id) {
+            let c = cheques.find(x => x.id === id);
+            if(c) {
+                c.estado = c.estado === 'PAGADO' ? 'PENDIENTE' : 'PAGADO';
+                persistData(); renderAll();
+            }
+        }
+
+        // --- HISTORIAL PROVEEDOR ---
+        function openProvModal(nombre) {
+            document.getElementById('modal-prov-title').innerText = `Historial: ${nombre}`;
+            let filtrados = cheques.filter(c => c.nombre.toLowerCase() === nombre.toLowerCase());
+            
+            let total = 0, pagado = 0, deuda = 0;
+            let tb = document.getElementById('prov-tbody');
+            tb.innerHTML = '';
+            
+            filtrados.sort((a,b) => new Date(a.fecha) - new Date(b.fecha)).forEach(c => {
+                total += c.importe;
+                if(c.estado === 'PAGADO') pagado += c.importe; else deuda += c.importe;
+                let bName = bancosData[c.banco] ? bancosData[c.banco].nombre : c.banco;
+                let bColor = bancosData[c.banco] ? (bancosData[c.banco].color || '#9ca3af') : '#9ca3af';
+                tb.innerHTML += `
+                    <tr>
+                        <td>${c.fecha||'-'}</td>
+                        <td>${c.nro||'-'}</td>
+                        <td>${c.categoria||'-'}</td>
+                        <td><span class="bank-dot" style="background-color: ${bColor}"></span>${bName}</td>
+                        <td><span class="badge ${c.estado==='PAGADO'?'pagado':'pendiente'}" style="width:auto; padding:2px 4px; font-size:9px;">${c.estado||'PENDIENTE'}</span></td>
+                        <td class="text-right" style="font-weight:600;">${formatCur(c.importe)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('prov-total').innerText = formatCur(total);
+            document.getElementById('prov-pagado').innerText = formatCur(pagado);
+            document.getElementById('prov-deuda').innerText = formatCur(deuda);
+            document.getElementById('proveedor-modal').style.display = 'flex';
+        }
+
+        // --- ABM BANCOS ---
+        function openBancoModal(key = null) {
+            if (key) {
+                const b = bancosData[key];
+                document.getElementById('modal-banco-title').innerText = `Editar Banco`;
+                document.getElementById('banco-key').value = key;
+                document.getElementById('form-banco-nombre').value = b.nombre;
+                document.getElementById('form-banco-color').value = b.color || '#1e3a8a';
+                document.getElementById('form-banco-saldo').value = b.saldo;
+                document.getElementById('form-banco-descubierto').value = b.descubierto;
+                document.getElementById('form-banco-vto').value = b.vtoAcuerdo || '';
+            } else {
+                document.getElementById('modal-banco-title').innerText = `Alta de Nuevo Banco`;
+                document.getElementById('banco-form').reset();
+                document.getElementById('form-banco-color').value = '#1e3a8a'; // Color default azul
+                document.getElementById('banco-key').value = '';
+            }
+            document.getElementById('banco-modal').style.display = 'flex';
+        }
+
+        function saveBanco(e) {
+            e.preventDefault();
+            let key = document.getElementById('banco-key').value;
+            if (!key) key = 'BCO-' + Date.now();
+
+            bancosData[key] = {
+                nombre: document.getElementById('form-banco-nombre').value.trim().toUpperCase(),
+                color: document.getElementById('form-banco-color').value,
+                saldo: parseFloat(document.getElementById('form-banco-saldo').value),
+                descubierto: parseFloat(document.getElementById('form-banco-descubierto').value),
+                vtoAcuerdo: document.getElementById('form-banco-vto').value
+            };
+
+            persistData(); updateDynamicUI(); closeModal('banco-modal'); renderAll();
+        }
+
+        function deleteBanco(key) {
+            let enUso = cheques.some(c => c.banco === key);
+            if (enUso) {
+                alert("No se puede eliminar el banco porque tiene cheques o pagos asociados. Cambia de banco los registros primero.");
+                return;
+            }
+            if (confirm("¿Estás seguro de eliminar este banco de tu lista?")) {
+                delete bancosData[key];
+                persistData(); updateDynamicUI(); renderAll();
+            }
+        }
+
+        // --- ABM CHEQUES ---
+        function openChequeModal() {
+            document.getElementById('modal-title').innerText = "Nuevo Pago/Cheque";
+            document.getElementById('cheque-form').reset();
+            document.getElementById('cheque-id').value = '';
+            document.getElementById('cheque-modal').style.display = 'flex';
+        }
+
+        function saveCheque(e) {
+            e.preventDefault();
+            const id = document.getElementById('cheque-id').value;
+            const data = {
+                fecha: document.getElementById('form-fecha').value, 
+                nro: document.getElementById('form-nro').value,
+                nombre: document.getElementById('form-nombre').value.trim().toUpperCase(),
+                categoria: document.getElementById('form-categoria').value.trim().toUpperCase(),
+                importe: parseFloat(document.getElementById('form-importe').value), 
+                banco: document.getElementById('form-banco').value,
+                tipo: document.getElementById('form-tipo').value,
+                estado: document.getElementById('form-estado').value || 'PENDIENTE'
+            };
+
+            if (id) {
+                let idx = cheques.findIndex(c => c.id == id);
+                cheques[idx] = { id: parseInt(id), ...data };
+            } else {
+                const newId = cheques.length > 0 ? Math.max(...cheques.map(c => c.id)) + 1 : 1;
+                cheques.push({ id: newId, ...data });
+            }
+            persistData(); updateDynamicUI(); closeModal('cheque-modal'); renderAll();
+        }
+
+        function editCheque(id) {
+            const c = cheques.find(item => item.id === id);
+            if (!c) return;
+            document.getElementById('modal-title').innerText = "Editar Pago";
+            document.getElementById('cheque-id').value = c.id;
+            ['fecha','nro','nombre','categoria','importe','banco','tipo','estado'].forEach(k => {
+                let el = document.getElementById(`form-${k}`);
+                if(el) el.value = c[k] || '';
+            });
+            document.getElementById('cheque-modal').style.display = 'flex';
+        }
+
+        function deleteCheque(id) {
+            if (confirm("¿Eliminar este registro de forma permanente?")) {
+                cheques = cheques.filter(c => c.id !== id);
+                persistData(); updateDynamicUI(); renderAll();
+            }
+        }
+    </script>
+</body>
+</html>
