@@ -367,14 +367,12 @@
                         <th>FECHA PAGO</th>
                         <th>N° CHEQUE</th>
                         <th>NOMBRE</th>
-                        <th class="text-right">IMPORTE</th>
                         <th>BANCO</th>
                         <th>TIPO</th>
                         <th class="text-center">ESTADO</th>
                         <th class="text-right">TOTAL DEBE</th>
                         <th>VTO</th>
                         <th class="text-center">DÍAS</th>
-                        <th>SEMANA</th>
                         <th class="text-right">ACUM. SEMANAL</th>
                         <th class="text-center actions-cell">ACCIONES</th>
                     </tr>
@@ -1059,7 +1057,6 @@
                         <td>${c.fecha ? new Date(c.fecha+'T00:00:00').toLocaleDateString('es-AR') : '-'}</td>
                         <td style="font-weight: 500;">${c.nro || '-'}</td>
                         <td title="${c.nombre}"><span class="proveedor-link" onclick="window.openProvModal('${c.nombre.replace(/'/g, "\\'")}')">${c.nombre}</span></td>
-                        <td class="text-right" style="font-weight:700; color:var(--dark);">${formatCur(c.importe)}</td>
                         <td title="${nombreBanco}"><span class="bank-dot" style="background-color: ${bColor}"></span><span style="max-width: 150px; display:inline-block; overflow:hidden; text-overflow:ellipsis; vertical-align: middle;">${nombreBanco}</span></td>
                         <td>${c.tipo || '-'}</td>
                         <td class="text-center" title="Marcar como PAGADO">
@@ -1070,7 +1067,6 @@
                         <td class="text-right" style="font-weight: 700; color: ${totalDebe > 0 ? 'var(--danger)' : 'var(--gray-text)'}">${formatCur(totalDebe)}</td>
                         <td>${vto || '-'}</td>
                         <td class="text-center" style="font-weight: 700; color: ${dias < 0 ? 'var(--danger)' : (dias > 0 ? 'var(--success)' : 'var(--gray-text)')}">${dias}</td>
-                        <td style="color:var(--gray-text); font-size:11px; font-weight: 500;">${semText}</td>
                         <td class="text-right"><span class="week-sum">${semAcum}</span></td>
                         <td class="text-center actions-cell">
                             <button class="btn-icon duplicate" onclick="window.duplicateCheque(${c.id})" title="Duplicar"><span class="material-icons-round" style="font-size:18px;">content_copy</span></button>
