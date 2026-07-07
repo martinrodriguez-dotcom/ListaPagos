@@ -240,6 +240,7 @@
         
         .modal-content.small { max-width: 420px; height: auto;}
         .modal-content.mini { max-width: 320px; height: auto; padding: 20px;}
+        .modal-content.large { max-width: 850px; } /* Nuevo tamaño ampliado para el modal */
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-shrink: 0;}
         .modal-body { overflow-y: auto; flex: 1; padding-right: 8px;}
         .close-modal { cursor: pointer; color: var(--gray-text); transition: color 0.2s; }
@@ -269,6 +270,16 @@
             table.main-table th { position: static; background: #f3f4f6 !important; -webkit-print-color-adjust: exact; color: black; border: 1px solid #ddd; }
             table.main-table td { border: 1px solid #ddd; white-space: normal; overflow: visible; }
             tr { page-break-inside: avoid; }
+
+            /* Impresión limpia de Modales (Proveedor / Categoría) */
+            body.print-modal-active header,
+            body.print-modal-active .sidebar,
+            body.print-modal-active #sidebar-overlay,
+            body.print-modal-active .tab-content { display: none !important; }
+            
+            body.print-modal-active .modal { display: block !important; position: absolute !important; background: none !important; padding: 0 !important; height: auto !important; overflow: visible !important; }
+            body.print-modal-active .modal-content { box-shadow: none !important; border: none !important; padding: 0 !important; max-width: 100% !important; max-height: none !important; overflow: visible !important; }
+            body.print-modal-active .modal-body { overflow: visible !important; max-height: none !important; padding: 0 !important; }
         }
     </style>
 </head>
@@ -294,6 +305,9 @@
                     </button>
                     <button class="tab-btn" onclick="switchTab('historial')" id="btn-tab-historial">
                         <span class="material-icons-round" style="font-size:18px;">history</span> Historial de Pagos
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('categorias')" id="btn-tab-categorias">
+                        <span class="material-icons-round" style="font-size:18px;">category</span> Por Categorías
                     </button>
                     <button class="tab-btn" onclick="switchTab('bancos')" id="btn-tab-bancos">
                         <span class="material-icons-round" style="font-size:18px;">account_balance</span> Gestión de Bancos
@@ -465,6 +479,25 @@
         </div>
     </div>
 
+    <!-- ================= PESTAÑA: POR CATEGORÍAS ================= -->
+    <div id="tab-categorias" class="tab-content">
+        <div class="table-container">
+            <table class="main-table" id="categorias-main-table">
+                <thead>
+                    <tr>
+                        <th>CATEGORÍA</th>
+                        <th class="text-right">TOTAL HISTÓRICO</th>
+                        <th class="text-right">PAGADO</th>
+                        <th class="text-right">DEUDA PENDIENTE</th>
+                    </tr>
+                </thead>
+                <tbody id="categorias-tbody">
+                    <!-- Dinámico -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- ================= MODALES ================= -->
 
     <!-- Modal Edición Rápida (Mini Modal) -->
@@ -630,10 +663,13 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modal-prov-title" style="font-size: 16px; color: var(--dark);">Historial: Proveedor</h2>
-                <span class="material-icons-round close-modal" onclick="window.closeModal('proveedor-modal')">close</span>
+                <div class="no-print">
+                    <button class="btn-icon" onclick="window.printModal()" title="Imprimir" style="margin-right: 8px;"><span class="material-icons-round">print</span></button>
+                    <span class="material-icons-round close-modal" onclick="window.closeModal('proveedor-modal')">close</span>
+                </div>
             </div>
             <div class="modal-body">
-                <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                <div style="display: flex; gap: 12px; margin-bottom: 20px;" class="no-print">
                     <div style="flex: 1; background: var(--bg); padding: 12px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border);">
                         <span style="display: block; font-size: 11px; color: var(--gray-text); font-weight: 600; text-transform: uppercase;">Total Histórico</span>
                         <strong id="prov-total" style="font-size: 18px; color: var(--dark);">0.00</strong>
@@ -659,6 +695,48 @@
                         </tr>
                     </thead>
                     <tbody id="prov-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial Categoría -->
+    <div class="modal" id="categoria-modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="modal-cat-title" style="font-size: 16px; color: var(--dark);">Detalle de Categoría</h2>
+                <div class="no-print">
+                    <button class="btn-icon" onclick="window.printModal()" title="Imprimir" style="margin-right: 8px;"><span class="material-icons-round">print</span></button>
+                    <span class="material-icons-round close-modal" onclick="window.closeModal('categoria-modal')">close</span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; gap: 12px; margin-bottom: 20px;" class="no-print">
+                    <div style="flex: 1; background: var(--bg); padding: 12px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border);">
+                        <span style="display: block; font-size: 11px; color: var(--gray-text); font-weight: 600; text-transform: uppercase;">Total Histórico</span>
+                        <strong id="cat-total" style="font-size: 18px; color: var(--dark);">0.00</strong>
+                    </div>
+                    <div style="flex: 1; background: var(--success-bg); padding: 12px; border-radius: var(--radius-md); text-align: center; border: 1px solid rgba(16, 185, 129, 0.2);">
+                        <span style="display: block; font-size: 11px; color: #065f46; font-weight: 600; text-transform: uppercase;">Pagado</span>
+                        <strong id="cat-pagado" style="font-size: 18px; color: #065f46;">0.00</strong>
+                    </div>
+                    <div style="flex: 1; background: var(--danger-bg); padding: 12px; border-radius: var(--radius-md); text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);">
+                        <span style="display: block; font-size: 11px; color: #991b1b; font-weight: 600; text-transform: uppercase;">Deuda Pendiente</span>
+                        <strong id="cat-deuda" style="font-size: 18px; color: #991b1b;">0.00</strong>
+                    </div>
+                </div>
+                <table class="main-table" style="font-size:11px;">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Nro</th>
+                            <th>Proveedor</th>
+                            <th>Banco</th>
+                            <th class="text-center">Estado</th>
+                            <th class="text-right">Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cat-tbody"></tbody>
                 </table>
             </div>
         </div>
@@ -762,7 +840,7 @@
             document.getElementById(`tab-${tabId}`).classList.add('active');
             
             const btnGlobal = document.getElementById('btn-global-action');
-            if(tabId === 'pagos' || tabId === 'historial') {
+            if(tabId === 'pagos' || tabId === 'historial' || tabId === 'categorias') {
                 btnGlobal.innerHTML = '<span class="material-icons-round">add</span> Nuevo';
             } else {
                 btnGlobal.innerHTML = '<span class="material-icons-round">account_balance</span> Banco';
@@ -927,6 +1005,7 @@
             for (let k in bancosData) bancosData[k].aPagarAcum = 0;
 
             let sumSemana = {}; 
+            let categoriasMap = {}; 
             let sortedCheques = [...cheques].sort((a,b) => new Date(a.fecha||'2099-01-01') - new Date(b.fecha||'2099-01-01'));
 
             let refDate = new Date(document.getElementById('fecha-actual').value + "T00:00:00");
@@ -950,6 +1029,13 @@
                     if(!sumSemana[satKey]) sumSemana[satKey] = 0;
                     sumSemana[satKey] += c.importe;
                 }
+
+                // Mapeo de Categorías
+                let cat = c.categoria || 'SIN CATEGORÍA';
+                if(!categoriasMap[cat]) categoriasMap[cat] = { total: 0, pagado: 0, deuda: 0 };
+                categoriasMap[cat].total += c.importe;
+                if(c.estado === 'PAGADO') categoriasMap[cat].pagado += c.importe;
+                else categoriasMap[cat].deuda += c.importe;
             });
 
             // 1. Render Resumen Bancos (Panel Izquierdo)
@@ -1142,10 +1228,33 @@
                     </tr>
                 `;
             }
+
+            // 4. Render Categorías
+            const tbodyCat = document.getElementById('categorias-tbody');
+            tbodyCat.innerHTML = '';
+            Object.keys(categoriasMap).sort().forEach(cat => {
+                let d = categoriasMap[cat];
+                tbodyCat.innerHTML += `
+                    <tr>
+                        <td title="Ver detalle de ${cat}"><span class="proveedor-link" onclick="window.openCategoriaModal('${cat.replace(/'/g, "\\'")}')">${cat}</span></td>
+                        <td class="text-right" style="font-weight:600;">${formatCur(d.total)}</td>
+                        <td class="text-right" style="color:var(--success); font-weight:600;">${formatCur(d.pagado)}</td>
+                        <td class="text-right" style="color:var(--danger); font-weight:600;">${formatCur(d.deuda)}</td>
+                    </tr>
+                `;
+            });
         }
 
         // --- ACCIONES INTERACTIVAS ---
         window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; };
+        
+        window.printModal = function() {
+            document.body.classList.add('print-modal-active');
+            window.print();
+            setTimeout(() => {
+                document.body.classList.remove('print-modal-active');
+            }, 500);
+        };
         
         window.toggleEstado = function(id) {
             let c = cheques.find(x => x.id === id);
@@ -1191,6 +1300,38 @@
             document.getElementById('prov-pagado').innerText = formatCur(pagado);
             document.getElementById('prov-deuda').innerText = formatCur(deuda);
             document.getElementById('proveedor-modal').style.display = 'flex';
+        };
+
+        // --- HISTORIAL CATEGORÍA ---
+        window.openCategoriaModal = function(cat) {
+            document.getElementById('modal-cat-title').innerText = `Detalle Categoría: ${cat}`;
+            let filtrados = cheques.filter(c => (c.categoria || 'SIN CATEGORÍA').toUpperCase() === cat.toUpperCase());
+            
+            let total = 0, pagado = 0, deuda = 0;
+            let tb = document.getElementById('cat-tbody');
+            tb.innerHTML = '';
+            
+            filtrados.sort((a,b) => new Date(a.fecha) - new Date(b.fecha)).forEach(c => {
+                total += c.importe;
+                if(c.estado === 'PAGADO') pagado += c.importe; else deuda += c.importe;
+                let bName = bancosData[c.banco] ? bancosData[c.banco].nombre : c.banco;
+                let bColor = bancosData[c.banco] ? (bancosData[c.banco].color || '#9ca3af') : '#9ca3af';
+                tb.innerHTML += `
+                    <tr>
+                        <td>${c.fecha ? formatDateArg(c.fecha) : '-'}</td>
+                        <td>${c.nro||'-'}</td>
+                        <td title="${c.nombre}"><span class="proveedor-link" onclick="window.closeModal('categoria-modal'); window.openProvModal('${c.nombre.replace(/'/g, "\\'")}')">${c.nombre}</span></td>
+                        <td><span class="bank-dot" style="background-color: ${bColor}"></span>${bName}</td>
+                        <td class="text-center"><span class="badge ${c.estado==='PAGADO'?'pagado':'pendiente'}" style="width:auto; padding:2px 6px; font-size:9px;">${c.estado||'PENDIENTE'}</span></td>
+                        <td class="text-right" style="font-weight:600;">${formatCur(c.importe)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('cat-total').innerText = formatCur(total);
+            document.getElementById('cat-pagado').innerText = formatCur(pagado);
+            document.getElementById('cat-deuda').innerText = formatCur(deuda);
+            document.getElementById('categoria-modal').style.display = 'flex';
         };
 
         // --- EDICIÓN RÁPIDA DE BANCO ---
