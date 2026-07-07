@@ -204,6 +204,7 @@
         .btn-icon:hover { color: var(--primary); background: var(--gray-light); }
         .btn-icon.delete:hover { color: var(--danger); background: var(--danger-bg); }
         .btn-icon.restore:hover { color: var(--success); background: var(--success-bg); }
+        .btn-icon.duplicate:hover { color: var(--primary-light); background: #e0e7ff; }
 
         .bank-dot {
             display: inline-block; width: 10px; height: 10px; border-radius: 50%;
@@ -1072,6 +1073,7 @@
                         <td style="color:var(--gray-text); font-size:11px; font-weight: 500;">${semText}</td>
                         <td class="text-right"><span class="week-sum">${semAcum}</span></td>
                         <td class="text-center actions-cell">
+                            <button class="btn-icon duplicate" onclick="window.duplicateCheque(${c.id})" title="Duplicar"><span class="material-icons-round" style="font-size:18px;">content_copy</span></button>
                             <button class="btn-icon" onclick="window.editCheque(${c.id})" title="Editar"><span class="material-icons-round" style="font-size:18px;">edit</span></button>
                             <button class="btn-icon delete" onclick="window.deleteCheque(${c.id})" title="Eliminar"><span class="material-icons-round" style="font-size:18px;">delete</span></button>
                         </td>
@@ -1270,6 +1272,20 @@
             }
             persistCheques(); 
             window.closeModal('cheque-modal');
+        };
+
+        window.duplicateCheque = function(id) {
+            const original = cheques.find(item => item.id === id);
+            if (!original) return;
+            
+            // Creamos un nuevo ID
+            const newId = cheques.length > 0 ? Math.max(...cheques.map(c => c.id)) + 1 : 1;
+            
+            // Duplicamos el objeto exacto, pero le asignamos el nuevo ID
+            const duplicated = { ...original, id: newId };
+            
+            cheques.push(duplicated);
+            persistCheques();
         };
 
         window.editCheque = function(id) {
