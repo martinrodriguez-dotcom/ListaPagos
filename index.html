@@ -195,17 +195,32 @@
         .resizer { position: absolute; top: 0; right: 0; width: 6px; height: 100%; cursor: col-resize; user-select: none; z-index: 11; }
         .resizer:hover, .resizing { background-color: var(--primary-light); opacity: 0.5; }
 
-        /* Badges & Links */
+        /* Badges, Selectores de Estado & Links */
         .proveedor-link { color: var(--primary-light); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.2s; }
         .proveedor-link:hover { color: var(--primary-hover); text-decoration: underline; }
 
+        /* Nuevo estilo para el Select Inline (Reemplaza al Badge clickeable) */
+        .inline-status-select {
+            padding: 4px 6px; border-radius: 9999px; font-size: 11px; font-weight: 700; font-family: var(--font);
+            text-transform: uppercase; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent;
+            text-align: center; width: 100%; min-width: 90px; appearance: none; -webkit-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 6px center; background-size: 12px;
+            padding-right: 20px; outline: none; letter-spacing: 0.02em;
+        }
+        .inline-status-select:hover { opacity: 0.9; box-shadow: var(--shadow-sm); }
+        .inline-status-select:focus { border-color: rgba(0,0,0,0.2); }
+        
+        .inline-status-select.pagado { background-color: var(--success-bg); color: #065f46; }
+        .inline-status-select.pendiente { background-color: var(--warning-bg); color: #92400e; }
+        .inline-status-select.vencido { background-color: var(--danger-bg); color: #991b1b; }
+
         .badge { 
             padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; 
-            text-transform: uppercase; cursor: pointer; transition: all 0.2s ease;
-            display: inline-block; text-align: center; width: 85px; user-select: none; letter-spacing: 0.025em;
+            text-transform: uppercase; transition: all 0.2s ease;
+            display: inline-block; text-align: center; user-select: none; letter-spacing: 0.025em;
         }
         .badge.pill-auto { width: auto; padding: 4px 12px; text-transform: none; }
-        .badge:hover { opacity: 0.8; transform: scale(1.02); }
         .badge.pagado { background: var(--success-bg); color: #065f46; }
         .badge.pendiente { background: var(--warning-bg); color: #92400e; }
         .badge.vencido { background: var(--danger-bg); color: #991b1b; }
@@ -273,8 +288,12 @@
             table.main-table td { border: 1px solid #ddd; white-space: normal; overflow: visible; }
             tr { page-break-inside: avoid; }
 
-            /* Impresión limpia de Modales */
-            body.print-modal-active header, body.print-modal-active .sidebar, body.print-modal-active #sidebar-overlay, body.print-modal-active .tab-content { display: none !important; }
+            /* Impresión limpia de Modales (Proveedor / Categoría) */
+            body.print-modal-active header,
+            body.print-modal-active .sidebar,
+            body.print-modal-active #sidebar-overlay,
+            body.print-modal-active .tab-content { display: none !important; }
+            
             body.print-modal-active .modal { display: block !important; position: absolute !important; background: none !important; padding: 0 !important; height: auto !important; overflow: visible !important; }
             body.print-modal-active .modal-content { box-shadow: none !important; border: none !important; padding: 0 !important; max-width: 100% !important; max-height: none !important; overflow: visible !important; }
             body.print-modal-active .modal-body { overflow: visible !important; max-height: none !important; padding: 0 !important; }
@@ -294,6 +313,7 @@
             <button class="btn-icon" onclick="window.toggleSidebar(true)"><span class="material-icons-round">close</span></button>
         </div>
         <div class="sidebar-body">
+            
             <div class="sidebar-section">
                 <h3>Vistas</h3>
                 <div class="tabs-vertical">
@@ -311,6 +331,7 @@
                     </button>
                 </div>
             </div>
+
             <div class="sidebar-section">
                 <h3>Herramientas</h3>
                 <label style="font-size: 11px; text-transform: uppercase; color: var(--gray-text); letter-spacing: 0.05em; font-weight:700; margin-bottom:6px; display:block;">Tamaño Visual</label>
@@ -320,6 +341,7 @@
                     <span class="material-icons-round" style="font-size: 16px; color: var(--gray-text);">zoom_in</span>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -1199,7 +1221,7 @@
                             <td><span class="bank-dot" style="background-color: ${bColor}"></span>${nombreBanco}</td>
                             <td class="text-right" style="font-weight:700; color:var(--dark);">${formatCur(c.importe)}</td>
                             <td class="text-center actions-cell">
-                                <button class="btn-icon restore" onclick="window.toggleEstado(${c.id})" title="Devolver a Pendientes"><span class="material-icons-round" style="font-size:18px;">settings_backup_restore</span></button>
+                                <button class="btn-icon restore" onclick="window.toggleEstado(${c.id}, 'PENDIENTE')" title="Devolver a Pendientes"><span class="material-icons-round" style="font-size:18px;">settings_backup_restore</span></button>
                                 <button class="btn-icon" onclick="window.editCheque(${c.id})" title="Editar"><span class="material-icons-round" style="font-size:18px;">edit</span></button>
                             </td>
                         </tr>
@@ -1252,10 +1274,12 @@
                         <td title="${c.nombre}"><span class="proveedor-link" onclick="window.openProvModal('${c.nombre.replace(/'/g, "\\'")}')">${c.nombre}</span></td>
                         <td title="${nombreBanco}"><span class="bank-dot" style="background-color: ${bColor}"></span><span style="max-width: 150px; display:inline-block; overflow:hidden; text-overflow:ellipsis; vertical-align: middle;">${nombreBanco}</span></td>
                         <td>${c.tipo || '-'}</td>
-                        <td class="text-center" title="Marcar como PAGADO">
-                            <span onclick="window.toggleEstado(${c.id})" class="badge ${isPagado ? 'pagado' : (vto==='VENCIDO'?'vencido':'pendiente')}">
-                                ${isPagado ? 'PAGADO' : 'PENDIENTE'}
-                            </span>
+                        <td class="text-center" title="Cambiar Estado">
+                            <select class="inline-status-select pendiente" onchange="window.changeEstadoInline(${c.id}, this.value)">
+                                <option value="PENDIENTE" selected>PENDIENTE</option>
+                                <option value="PAGADO">PAGADO</option>
+                                <option value="VENCIDO">VENCIDO</option>
+                            </select>
                         </td>
                         <td class="text-right" style="font-weight: 700; color: ${totalDebe > 0 ? 'var(--danger)' : 'var(--gray-text)'}">${formatCur(totalDebe)}</td>
                         <td>${vto || '-'}</td>
@@ -1338,18 +1362,27 @@
             }, 500);
         };
         
-        window.toggleEstado = function(id) {
+        // Función específica para el cambio de estado con el dropdown inline
+        window.changeEstadoInline = function(id, nuevoEstado) {
             let c = cheques.find(x => x.id === id);
             if(c) {
-                // Ciclo: Si es PENDIENTE -> PAGADO. Si es PAGADO -> PENDIENTE. Si es VENCIDO -> PENDIENTE.
-                if (c.estado === 'PENDIENTE') {
-                    c.estado = 'PAGADO';
-                    c.fechaPagado = document.getElementById('fecha-actual').value; 
-                } else if (c.estado === 'PAGADO') {
+                c.estado = nuevoEstado;
+                if(nuevoEstado === 'PAGADO') {
+                    c.fechaPagado = document.getElementById('fecha-actual').value;
+                } else {
+                    c.fechaPagado = null;
+                }
+                persistCheques();
+            }
+        };
+
+        // Función heredada para botones de restaurar (vencidos o historial)
+        window.toggleEstado = function(id, estadoDestino = 'PENDIENTE') {
+            let c = cheques.find(x => x.id === id);
+            if(c) {
+                if(estadoDestino === 'PENDIENTE') {
                     c.estado = 'PENDIENTE';
                     c.fechaPagado = null;
-                } else if (c.estado === 'VENCIDO') {
-                    c.estado = 'PENDIENTE';
                 }
                 persistCheques(); 
             }
@@ -1375,7 +1408,7 @@
                         <td>${c.nro||'-'}</td>
                         <td>${c.categoria||'-'}</td>
                         <td><span class="bank-dot" style="background-color: ${bColor}"></span>${bName}</td>
-                        <td class="text-center"><span class="badge ${c.estado==='PAGADO'?'pagado':'pendiente'}" style="width:auto; padding:2px 6px; font-size:9px;">${c.estado||'PENDIENTE'}</span></td>
+                        <td class="text-center"><span class="badge ${c.estado==='PAGADO'?'pagado': (c.estado==='VENCIDO'?'vencido':'pendiente')}" style="width:auto; padding:2px 6px; font-size:9px;">${c.estado||'PENDIENTE'}</span></td>
                         <td class="text-right" style="font-weight:600;">${formatCur(c.importe)}</td>
                     </tr>
                 `;
@@ -1407,7 +1440,7 @@
                         <td>${c.nro||'-'}</td>
                         <td title="${c.nombre}"><span class="proveedor-link" onclick="window.closeModal('categoria-modal'); window.openProvModal('${c.nombre.replace(/'/g, "\\'")}')">${c.nombre}</span></td>
                         <td><span class="bank-dot" style="background-color: ${bColor}"></span>${bName}</td>
-                        <td class="text-center"><span class="badge ${c.estado==='PAGADO'?'pagado':'pendiente'}" style="width:auto; padding:2px 6px; font-size:9px;">${c.estado||'PENDIENTE'}</span></td>
+                        <td class="text-center"><span class="badge ${c.estado==='PAGADO'?'pagado': (c.estado==='VENCIDO'?'vencido':'pendiente')}" style="width:auto; padding:2px 6px; font-size:9px;">${c.estado||'PENDIENTE'}</span></td>
                         <td class="text-right" style="font-weight:600;">${formatCur(c.importe)}</td>
                     </tr>
                 `;
