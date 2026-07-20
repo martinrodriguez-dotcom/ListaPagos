@@ -199,7 +199,6 @@
         .proveedor-link { color: var(--primary-light); font-weight: 600; cursor: pointer; text-decoration: none; transition: color 0.2s; }
         .proveedor-link:hover { color: var(--primary-hover); text-decoration: underline; }
 
-        /* Nuevo estilo para el Select Inline (Reemplaza al Badge clickeable) */
         .inline-status-select {
             padding: 4px 6px; border-radius: 9999px; font-size: 11px; font-weight: 700; font-family: var(--font);
             text-transform: uppercase; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent;
@@ -271,7 +270,6 @@
         .form-group input, .form-group select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-md); font-family: var(--font); font-size: 13px; outline: none; background: var(--surface); transition: all 0.2s ease; color: var(--dark);}
         .form-group input:focus, .form-group select:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15); }
 
-        /* Loader para Firebase */
         #fb-loader { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; z-index: 9999; box-shadow: var(--shadow-md); display: none; }
 
         /* --- ESTILOS DE IMPRESIÓN --- */
@@ -288,6 +286,13 @@
             table.main-table td { border: 1px solid #ddd; white-space: normal; overflow: visible; }
             tr { page-break-inside: avoid; }
 
+            /* Impresión Exclusiva de Resumen Semanal/Fechas */
+            body.print-resumen-only .table-container,
+            body.print-resumen-only .bancos-wrapper,
+            body.print-resumen-only header,
+            body.print-resumen-only .sidebar { display: none !important; }
+            body.print-resumen-only .resumen-wrapper { flex: 1 !important; display: block !important; border: none; box-shadow: none; margin: 0; }
+            
             /* Impresión limpia de Modales (Proveedor / Categoría) */
             body.print-modal-active header,
             body.print-modal-active .sidebar,
@@ -302,7 +307,6 @@
 </head>
 <body>
 
-    <!-- Loader de sincronización -->
     <div id="fb-loader">Sincronizando...</div>
 
     <!-- Menú Lateral (Sidebar) -->
@@ -394,6 +398,7 @@
                                 <th class="text-right">Saldo Inicial</th>
                                 <th class="text-right">Descubierto</th>
                                 <th class="text-right">Disponible</th>
+                                <th class="text-right" style="color: var(--warning);">Semana</th>
                                 <th class="text-right">A Pagar (Acum)</th>
                                 <th class="text-center">Días Vto</th>
                             </tr>
@@ -411,7 +416,7 @@
                     <span id="rp-title">Resumen Semanal</span>
                     <div style="display:flex; gap:12px; align-items:center;">
                         <button class="btn-icon no-print" id="btn-clear-resumen" onclick="window.clearResumen()" title="Limpiar Filtro" style="display:none; padding: 2px; color:var(--danger);"><span class="material-icons-round" style="font-size:16px;">close</span></button>
-                        <button class="btn-icon no-print" onclick="window.print()" title="Imprimir" style="padding: 2px;"><span class="material-icons-round" style="font-size:16px;">print</span></button>
+                        <button class="btn-icon no-print" onclick="window.printResumen()" title="Imprimir Resumen" style="padding: 2px;"><span class="material-icons-round" style="font-size:16px;">print</span></button>
                         <span id="rp-total" style="color:var(--danger); font-size:14px; font-weight:800;">$ 0.00</span>
                     </div>
                 </div>
@@ -937,7 +942,6 @@
                 document.body.style.zoom = savedScale;
             }
 
-            // Fijar fecha de referencia automáticamente a hoy
             const today = new Date();
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -1056,9 +1060,18 @@
             document.getElementById('vencidos-modal').style.display = 'flex';
         }
 
+        window.printResumen = function() {
+            document.body.classList.add('print-resumen-only');
+            window.print();
+            setTimeout(() => document.body.classList.remove('print-resumen-only'), 500);
+        }
+
         // --- RENDERIZADO PRINCIPAL ---
         function renderAll() {
-            for (let k in bancosData) bancosData[k].aPagarAcum = 0;
+            for (let k in bancosData) {
+                bancosData[k].aPagarAcum = 0;
+                bancosData[k].semanaAcum = 0; // Para la columna Semana
+            }
 
             let sumSemana = {}; 
             let categoriasMap = {}; 
@@ -1069,17 +1082,19 @@
             let diffToSat = rDay === 6 ? 0 : rDay + 1;
             let currentSat = new Date(refDate);
             currentSat.setDate(refDate.getDate() - diffToSat);
-            let nextSat = new Date(currentSat);
-            nextSat.setDate(currentSat.getDate() + 7);
+            
+            let endFriday = new Date(currentSat);
+            endFriday.setDate(currentSat.getDate() + 6); // De sábado a viernes
             
             let currentSatStr = currentSat.toISOString().split('T')[0];
-            let nextSatStr = nextSat.toISOString().split('T')[0];
+            let endFridayStr = endFriday.toISOString().split('T')[0];
 
             sortedCheques.forEach(c => {
-                // Acumulados de deuda para bancos (Incluye PENDIENTES y explícitamente VENCIDOS)
+                // Acumulados de deuda para bancos (A Pagar total)
                 if ((c.estado === "PENDIENTE" || c.estado === "VENCIDO") && c.banco && bancosData[c.banco]) {
                     bancosData[c.banco].aPagarAcum += c.importe;
                 }
+                
                 if (c.fecha && c.estado === "PENDIENTE") {
                     let sat = getSaturday(c.fecha);
                     let satKey = sat.toISOString().split('T')[0];
@@ -1092,52 +1107,9 @@
                 if(!categoriasMap[cat]) categoriasMap[cat] = { total: 0, pagado: 0, deuda: 0 };
                 categoriasMap[cat].total += c.importe;
                 if(c.estado === 'PAGADO') categoriasMap[cat].pagado += c.importe;
-                else categoriasMap[cat].deuda += c.importe; // Pendientes y vencidos son deuda
+                else categoriasMap[cat].deuda += c.importe;
             });
 
-            // 1. Render Resumen Bancos (Panel Izquierdo)
-            const tbodyBancosSum = document.getElementById('bancos-summary-tbody');
-            tbodyBancosSum.innerHTML = '';
-            
-            let totalGeneralAPagar = 0;
-            
-            for (let k in bancosData) {
-                totalGeneralAPagar += bancosData[k].aPagarAcum;
-                
-                let b = bancosData[k];
-                if(b.saldo === 0 && b.descubierto === 0 && b.aPagarAcum === 0) continue; 
-                if(b.nombre.toUpperCase().includes('CAJA')) continue; 
-
-                let disp = b.saldo + b.descubierto;
-                let vtoAcuerdoData = calcVto(b.vtoAcuerdo, false);
-                let saldoCls = b.saldo < 0 ? 'negative' : (b.saldo > 0 ? 'positive' : 'neutral');
-                let dispCls = disp < 0 ? 'negative' : (disp > 0 ? 'positive' : 'neutral');
-                let bColor = b.color || '#9ca3af';
-                
-                tbodyBancosSum.innerHTML += `
-                    <tr>
-                        <td title="${b.nombre}" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span class="bank-dot" style="background-color: ${bColor}"></span>${b.nombre}</td>
-                        <td class="text-right" title="Click para editar" onclick="window.openQuickEditBanco('${k}')">
-                            <span class="saldo-badge editable-cell ${saldoCls}">${formatCur(b.saldo)}</span>
-                        </td>
-                        <td class="text-right editable-cell" style="color:var(--gray-text); font-weight: 600;" title="Click para editar" onclick="window.openQuickEditBanco('${k}')">${formatCur(b.descubierto)}</td>
-                        <td class="text-right"><span class="saldo-badge ${dispCls}">${formatCur(disp)}</span></td>
-                        <td class="text-right" style="color:var(--danger); font-weight: 600;">${formatCur(b.aPagarAcum)}</td>
-                        <td class="text-center" style="font-weight:600; color:${vtoAcuerdoData.dias < 0 ? 'var(--danger)' : 'var(--warning)'}">${vtoAcuerdoData.dias !== '' ? vtoAcuerdoData.dias : '-'}</td>
-                    </tr>
-                `;
-            }
-            
-            // Fila de Total General
-            tbodyBancosSum.innerHTML += `
-                <tr style="background-color: var(--gray-light); border-top: 2px solid var(--border);">
-                    <td colspan="4" class="text-right" style="font-weight: 700; color: var(--dark); padding-right: 12px; font-size: 11px; text-transform: uppercase;">Total General a Pagar:</td>
-                    <td class="text-right" style="color: var(--danger); font-weight: 800; font-size: 14px;">${formatCur(totalGeneralAPagar)}</td>
-                    <td></td>
-                </tr>
-            `;
-
-            // 2. Render Panel Derecho (Semana o Resumen)
             const searchTxt = document.getElementById('search-nombre').value.toLowerCase();
             const rpTbody = document.getElementById('rp-tbody');
             rpTbody.innerHTML = '';
@@ -1147,7 +1119,7 @@
                 document.getElementById('rp-title').innerHTML = `<span style="color:var(--warning)">Resumen: ${formatDateArg(summaryState.start)} a ${formatDateArg(summaryState.end)}</span>`;
                 document.getElementById('btn-clear-resumen').style.display = 'inline-flex';
             } else {
-                document.getElementById('rp-title').innerHTML = `Semana: Sáb ${formatDateArg(currentSatStr).substring(0,5)} a Sáb ${formatDateArg(nextSatStr).substring(0,5)}`;
+                document.getElementById('rp-title').innerHTML = `Semana: Sáb ${formatDateArg(currentSatStr).substring(0,5)} a Vie ${formatDateArg(endFridayStr).substring(0,5)}`;
                 document.getElementById('btn-clear-resumen').style.display = 'none';
             }
 
@@ -1196,7 +1168,7 @@
                         <td title="${nombreBanco}"><span class="bank-dot" style="background-color: ${bColor}"></span><span style="max-width: 150px; display:inline-block; overflow:hidden; text-overflow:ellipsis; vertical-align: middle;">${nombreBanco}</span></td>
                         <td class="text-center">${eficienciaHtml}</td>
                         <td class="text-center actions-cell">
-                            <button class="btn-icon restore" onclick="window.toggleEstado(${c.id})" title="Devolver a Pendientes"><span class="material-icons-round" style="font-size:18px;">settings_backup_restore</span></button>
+                            <button class="btn-icon restore" onclick="window.toggleEstado(${c.id}, 'PENDIENTE')" title="Devolver a Pendientes"><span class="material-icons-round" style="font-size:18px;">settings_backup_restore</span></button>
                             <button class="btn-icon delete" onclick="window.deleteCheque(${c.id})" title="Eliminar registro"><span class="material-icons-round" style="font-size:18px;">delete</span></button>
                         </td>
                     </tr>
@@ -1210,7 +1182,6 @@
 
                 if (c.estado === 'PAGADO') return; 
 
-                // Si está explícitamente marcado como VENCIDO
                 if (c.estado === 'VENCIDO') {
                     vencidosCount++;
                     tbodyVencidos.innerHTML += `
@@ -1226,21 +1197,23 @@
                             </td>
                         </tr>
                     `;
-                    return; // No se muestra en tablas principales
+                    return; 
                 }
 
-                // Filtrar para el Panel de Resumen Derecho (Sólo Pendientes)
+                // Lógica de llenado de Panel Derecho (Resumen / Semana) y Acumulado "Semana" Bancos
                 if (c.fecha && c.estado === 'PENDIENTE') {
                     let entraEnPanel = false;
                     if (summaryState.active) {
                         entraEnPanel = (c.fecha >= summaryState.start && c.fecha <= summaryState.end);
                     } else {
-                        // Resumen Semanal por defecto: Muestra la semana actual Y TODO lo vencido anterior no pagado
-                        entraEnPanel = (c.fecha <= nextSatStr); 
+                        entraEnPanel = (c.fecha <= endFridayStr); 
                     }
 
                     if (entraEnPanel) {
                         totalRightPanel += c.importe;
+                        if (c.banco && bancosData[c.banco]) {
+                            bancosData[c.banco].semanaAcum += c.importe;
+                        }
                         rpTbody.innerHTML += `
                             <tr>
                                 <td title="${c.nombre}" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight:500;">${c.nombre}</td>
@@ -1251,7 +1224,7 @@
                     }
                 }
 
-                // Filtrar para la Tabla Principal (Lista General independiente)
+                // Filtrar para la Tabla Principal
                 let txtToSearch = `${c.nombre} ${c.categoria} ${c.nro} ${nombreBanco}`.toLowerCase();
                 if (searchTxt && !txtToSearch.includes(searchTxt)) return;
 
@@ -1296,7 +1269,6 @@
 
             document.getElementById('rp-total').innerText = formatCur(totalRightPanel);
 
-            // Actualizar botón de Vencidos en cabecera
             document.getElementById('vencidos-count').innerText = vencidosCount;
             if (vencidosCount > 0) {
                 document.getElementById('btn-vencidos-top').style.display = 'inline-flex';
@@ -1304,7 +1276,56 @@
                 document.getElementById('btn-vencidos-top').style.display = 'none';
             }
 
-            // 3. Render Vista Completa Bancos
+            // 3. Render Resumen Bancos (Panel Izquierdo)
+            const tbodyBancosSum = document.getElementById('bancos-summary-tbody');
+            tbodyBancosSum.innerHTML = '';
+            
+            let totalGeneralAPagar = 0;
+            let totalGeneralSemana = 0;
+            
+            for (let k in bancosData) {
+                let b = bancosData[k];
+                if(b.saldo === 0 && b.descubierto === 0 && b.aPagarAcum === 0 && b.semanaAcum === 0) continue; 
+                if(b.nombre.toUpperCase().includes('CAJA')) {
+                    totalGeneralAPagar += b.aPagarAcum;
+                    totalGeneralSemana += b.semanaAcum;
+                    continue; 
+                }
+
+                let disp = b.saldo + b.descubierto;
+                let vtoAcuerdoData = calcVto(b.vtoAcuerdo, false);
+                let saldoCls = b.saldo < 0 ? 'negative' : (b.saldo > 0 ? 'positive' : 'neutral');
+                let dispCls = disp < 0 ? 'negative' : (disp > 0 ? 'positive' : 'neutral');
+                let bColor = b.color || '#9ca3af';
+                
+                tbodyBancosSum.innerHTML += `
+                    <tr>
+                        <td title="${b.nombre}" style="max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><span class="bank-dot" style="background-color: ${bColor}"></span>${b.nombre}</td>
+                        <td class="text-right" title="Click para editar" onclick="window.openQuickEditBanco('${k}')">
+                            <span class="saldo-badge editable-cell ${saldoCls}">${formatCur(b.saldo)}</span>
+                        </td>
+                        <td class="text-right editable-cell" style="color:var(--gray-text); font-weight: 600;" title="Click para editar" onclick="window.openQuickEditBanco('${k}')">${formatCur(b.descubierto)}</td>
+                        <td class="text-right"><span class="saldo-badge ${dispCls}">${formatCur(disp)}</span></td>
+                        <td class="text-right" style="color:var(--warning); font-weight: 600;">${formatCur(b.semanaAcum)}</td>
+                        <td class="text-right" style="color:var(--danger); font-weight: 600;">${formatCur(b.aPagarAcum)}</td>
+                        <td class="text-center" style="font-weight:600; color:${vtoAcuerdoData.dias < 0 ? 'var(--danger)' : 'var(--warning)'}">${vtoAcuerdoData.dias !== '' ? vtoAcuerdoData.dias : '-'}</td>
+                    </tr>
+                `;
+
+                totalGeneralAPagar += b.aPagarAcum;
+                totalGeneralSemana += b.semanaAcum;
+            }
+            
+            tbodyBancosSum.innerHTML += `
+                <tr style="background-color: var(--gray-light); border-top: 2px solid var(--border);">
+                    <td colspan="4" class="text-right" style="font-weight: 700; color: var(--dark); padding-right: 12px; font-size: 11px; text-transform: uppercase;">Total General:</td>
+                    <td class="text-right" style="color: var(--warning); font-weight: 800; font-size: 13px;">${formatCur(totalGeneralSemana)}</td>
+                    <td class="text-right" style="color: var(--danger); font-weight: 800; font-size: 13px;">${formatCur(totalGeneralAPagar)}</td>
+                    <td></td>
+                </tr>
+            `;
+
+            // 4. Render Vista Completa Bancos
             const tbodyBancosFull = document.getElementById('bancos-full-tbody');
             tbodyBancosFull.innerHTML = '';
             for (let k in bancosData) {
@@ -1332,7 +1353,7 @@
                 `;
             }
 
-            // 4. Render Categorías
+            // 5. Render Categorías
             const tbodyCat = document.getElementById('categorias-tbody');
             tbodyCat.innerHTML = '';
             Object.keys(categoriasMap).sort().forEach(cat => {
@@ -1362,7 +1383,6 @@
             }, 500);
         };
         
-        // Función específica para el cambio de estado con el dropdown inline
         window.changeEstadoInline = function(id, nuevoEstado) {
             let c = cheques.find(x => x.id === id);
             if(c) {
@@ -1376,7 +1396,6 @@
             }
         };
 
-        // Función heredada para botones de restaurar (vencidos o historial)
         window.toggleEstado = function(id, estadoDestino = 'PENDIENTE') {
             let c = cheques.find(x => x.id === id);
             if(c) {
